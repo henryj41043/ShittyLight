@@ -315,7 +315,7 @@ MonoBehaviour:
   Prefabs:
     bulletPrefab: {fileID: 1166590280846547254, guid: 5953171a59c27394e9ad5cbb564affa8,
       type: 3}
-    casingPrefab: {fileID: 382214866589741447, guid: 7be59128a5ee3424faf33d7a408c0b2e,
+    casingPrefab: {fileID: 4420745226056240, guid: 7be59128a5ee3424faf33d7a408c0b2e,
       type: 3}
     grenadePrefab: {fileID: -7424241371468946197, guid: 7b04fe350ed10a741a1e245447860d9e,
       type: 3}

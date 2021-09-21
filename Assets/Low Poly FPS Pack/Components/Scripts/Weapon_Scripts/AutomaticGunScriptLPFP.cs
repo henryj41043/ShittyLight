@@ -38,8 +38,6 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 	public float maxSwayAmount = 0.06f;
 	public float swaySmoothValue = 4.0f;
 
-	private Vector3 initialSwayPosition;
-
 	private float lastFired;
 	[Header("Weapon Settings")]
 	[Tooltip("How fast the weapon fires, higher value means faster rate of fire.")]
@@ -53,7 +51,6 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 	private bool holstered;
 	private bool isRunning;
 	private bool isAiming;
-	private bool isWalking;
 	private bool isInspecting;
 
 	private int currentAmmo;
@@ -74,20 +71,12 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 	public float grenadeSpawnDelay = 0.35f;
 
 	[Header("Muzzleflash Settings")]
-	public bool randomMuzzleflash = false;
-	private int minRandomValue = 1;
-
-	[Range(2, 25)]
-	public int maxRandomValue = 5;
-
-	private int randomMuzzleflashValue;
-
 	public bool enableMuzzleflash = true;
 	public ParticleSystem muzzleParticles;
 	public bool enableSparks = true;
 	public ParticleSystem sparkParticles;
 	public int minSparkEmission = 1;
-	public int maxSparkEmission = 7;
+	public int maxSparkEmission = 5;
 
 	[Header("Muzzleflash Light Settings")]
 	public Light muzzleflashLight;
@@ -107,7 +96,7 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 	{  
 		[Header("Prefabs")]
 		public NetworkObject bulletPrefab;
-		public NetworkObject casingPrefab;
+		public Transform casingPrefab;
 		public NetworkObject grenadePrefab;
 	}
 	public prefabs Prefabs;
@@ -167,7 +156,6 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 		if (IsLocalPlayer)
 		{
 			totalAmmoText.text = ammo.ToString();
-			initialSwayPosition = transform.localPosition;
 		}
 
 		shootAudioSource.clip = SoundClips.shootSound;
@@ -230,12 +218,6 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 		}
 		//Aiming end
 
-		//If randomize muzzleflash is true, genereate random int values
-		if (randomMuzzleflash == true) 
-		{
-			randomMuzzleflashValue = Random.Range (minRandomValue, maxRandomValue);
-		}
-
 		//Set current ammo text from ammo int
 		currentAmmoText.text = currentAmmo.ToString ();
 
@@ -283,36 +265,10 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 			if (Time.time - lastFired > 1 / fireRate) 
 			{
 				lastFired = Time.time;
-
 				currentAmmo -= 1;
-
-				shootAudioSource.clip = SoundClips.shootSound;
-				shootAudioSource.Play ();
-
 				if (!isAiming)
 				{
 					anim.Play ("Fire", 0, 0f);
-					if (!randomMuzzleflash && 
-						enableMuzzleflash == true)
-					{
-						muzzleParticles.Emit (1);
-						StartCoroutine(MuzzleFlashLight());
-					} 
-					else if (randomMuzzleflash == true)
-					{
-						if (randomMuzzleflashValue == 1) 
-						{
-							if (enableSparks == true) 
-							{
-								sparkParticles.Emit (Random.Range (minSparkEmission, maxSparkEmission));
-							}
-							if (enableMuzzleflash == true)
-							{
-								muzzleParticles.Emit (1);
-								StartCoroutine (MuzzleFlashLight ());
-							}
-						}
-					}
 				} 
 				else
 				{
@@ -320,28 +276,7 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 					{
 						anim.Play ("Aim Fire", 0, 0f);
 					}
-
-					if (!randomMuzzleflash)
-					{
-						muzzleParticles.Emit (1);
-					} 
-					else if (randomMuzzleflash == true) 
-					{
-						if (randomMuzzleflashValue == 1) 
-						{
-							if (enableSparks == true) 
-							{
-								sparkParticles.Emit (Random.Range (minSparkEmission, maxSparkEmission));
-							}
-							if (enableMuzzleflash == true)
-							{
-								muzzleParticles.Emit (1);
-								StartCoroutine (MuzzleFlashLight ());
-							}
-						}
-					}
 				}
-
 				StartCoroutine(Shoot());
 			}
 		}
@@ -428,11 +363,26 @@ public class AutomaticGunScriptLPFP : NetworkBehaviour {
 			bullet.transform.forward * bulletForce;
 		bullet.Spawn();
 
-		//TODO: handle client side
-		NetworkObject casing = Instantiate(Prefabs.casingPrefab,
+		ShootClientRpc();
+	}
+
+	[ClientRpc]
+	private void ShootClientRpc()
+    {
+		Instantiate(Prefabs.casingPrefab,
 			Spawnpoints.casingSpawnPoint.transform.position,
 			Spawnpoints.casingSpawnPoint.transform.rotation);
-		casing.Spawn();
+		shootAudioSource.clip = SoundClips.shootSound;
+		shootAudioSource.Play();
+        if (enableMuzzleflash)
+        {
+			muzzleParticles.Emit(1);
+			StartCoroutine(MuzzleFlashLight());
+		}
+        if (enableSparks)
+        {
+			sparkParticles.Emit(Random.Range(minSparkEmission, maxSparkEmission));
+		}
 	}
 
 	private IEnumerator GrenadeSpawnDelay () {
